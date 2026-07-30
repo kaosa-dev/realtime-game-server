@@ -1,8 +1,13 @@
 # Realtime Game Server
 
-Production-oriented **server-authoritative multiplayer backend** built to demonstrate modern backend engineering practices used in competitive online games.
+![CI](https://github.com/kaosa-dev/realtime-game-server/actions/workflows/ci.yml/badge.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-This project is **not** a complete game client. It is a polished open-source backend that covers authentication, persistent player progression, lobbies, authoritative realtime sessions, inventory/economy, Redis-backed presence/rate limiting, and CI/CD.
+A reference implementation of a **server-authoritative multiplayer backend**, designed to demonstrate production-oriented backend architecture and realtime networking patterns used in competitive online games.
+
+This project is **not** a complete game client. It covers authentication, persistent player progression, lobbies, authoritative realtime sessions, inventory/economy boundaries, Redis-backed presence/rate limiting, and automated CI.
 
 ## Features
 
@@ -17,6 +22,7 @@ This project is **not** a complete game client. It is a polished open-source bac
 - Coin economy with transactional ledger entries
 - Experience leaderboard
 - Redis presence, session cache, and rate limiting
+- Privileged grant/credit mutations behind admin API key
 - Docker Compose one-command local stack
 - Vitest unit/integration tests + GitHub Actions CI
 
@@ -33,13 +39,18 @@ Live Docker Compose stack (`api` + `postgres` + `redis`) was storm-tested with *
 | After-load health | **ok** · Redis **ready** |
 | Process errors | **0** |
 
-Authenticated routes were intentionally Redis rate-limited (~5,000 req/min). Under abuse they returned `429` while the API kept serving — expected production protection, not a crash.
+The highest throughput figures were recorded on the lightweight `/health` endpoint. Authenticated API routes were tested separately under Redis-backed rate limiting. These results demonstrate process stability and infrastructure behavior, not full game-session capacity.
 
 ![Load test report hero](docs/load-test/screenshot-report-hero.png)
+
+<details>
+<summary>Additional load-test evidence</summary>
 
 ![Live stack status after load](docs/load-test/screenshot-live-status.png)
 
 ![GET /health still ok](docs/load-test/screenshot-health.png)
+
+</details>
 
 Reproduce:
 
@@ -51,6 +62,15 @@ npm run load:report
 ```
 
 Raw artifacts: [`docs/load-test/results.json`](docs/load-test/results.json) · [`docs/load-test/report.html`](docs/load-test/report.html)
+
+## Design Decisions
+
+- Fastify was selected for low-overhead HTTP routing and schema-driven request handling.
+- WebSocket state is kept in memory for low-latency simulation, while PostgreSQL stores persistent progression.
+- Redis is used only for ephemeral cross-process concerns such as presence and rate limiting.
+- Clients submit movement intent rather than absolute position updates.
+- Repository interfaces isolate application services from Prisma-specific persistence code.
+- Item grants and coin credits are admin-only (`x-admin-key`); player JWTs cannot mint economy state.
 
 ## Tech Stack
 
@@ -220,16 +240,14 @@ curl -s http://localhost:3000/players/me \
 curl -s http://localhost:3000/inventory \
   -H "authorization: Bearer $ACCESS_TOKEN"
 
-curl -s -X POST http://localhost:3000/inventory/add \
-  -H "authorization: Bearer $ACCESS_TOKEN" \
-  -H 'content-type: application/json' \
-  -d '{"itemKey":"sword_iron","name":"Iron Sword","quantity":1}'
-
 curl -s -X POST http://localhost:3000/inventory/remove \
   -H "authorization: Bearer $ACCESS_TOKEN" \
   -H 'content-type: application/json' \
   -d '{"itemKey":"sword_iron","quantity":1}'
 ```
+
+> Privileged mutations such as granting items or crediting coins are **not** available on player JWT routes.
+> Use `/admin/*` with `x-admin-key` (requires `ADMIN_API_KEY`). If the key is unset, those routes stay disabled.
 
 ### Lobby
 
@@ -259,12 +277,21 @@ curl -s -X POST http://localhost:3000/lobby/rooms/start \
 curl -s http://localhost:3000/economy/balance \
   -H "authorization: Bearer $ACCESS_TOKEN"
 
-curl -s -X POST http://localhost:3000/economy/credit \
-  -H "authorization: Bearer $ACCESS_TOKEN" \
-  -H 'content-type: application/json' \
-  -d '{"amount":50,"reason":"quest_reward"}'
-
 curl -s 'http://localhost:3000/leaderboard?limit=10'
+```
+
+### Admin grants (local testing)
+
+```bash
+curl -s -X POST http://localhost:3000/admin/inventory/grant \
+  -H "x-admin-key: $ADMIN_API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{"playerId":"'"$PLAYER_ID"'","itemKey":"sword_iron","name":"Iron Sword","quantity":1}'
+
+curl -s -X POST http://localhost:3000/admin/economy/credit \
+  -H "x-admin-key: $ADMIN_API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{"playerId":"'"$PLAYER_ID"'","amount":50,"reason":"quest_reward"}'
 ```
 
 ## WebSocket Protocol
@@ -388,6 +415,7 @@ See `.env.example` for all knobs:
 - `MAX_MOVE_SPEED`
 - `HEARTBEAT_TIMEOUT_MS`
 - `WS_RATE_LIMIT_PER_SECOND`
+- `ADMIN_API_KEY` (optional; required only to unlock `/admin/*`)
 - JWT secrets and expiry windows
 
 ## Future Improvements

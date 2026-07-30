@@ -21,6 +21,7 @@ const envSchema = z.object({
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
   HTTP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(1000),
   HTTP_RATE_LIMIT_WINDOW: z.string().default('1 minute'),
+  ADMIN_API_KEY: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

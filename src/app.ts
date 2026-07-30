@@ -6,6 +6,7 @@ import type { AppContainer } from './shared/container.js';
 import { env } from './shared/config/env.js';
 import { errorHandler } from './api/middleware/error-handler.js';
 import { authRoutes } from './api/routes/auth.js';
+import { adminRoutes } from './api/routes/admin.js';
 import { economyRoutes } from './api/routes/economy.js';
 import { inventoryRoutes } from './api/routes/inventory.js';
 import { leaderboardRoutes } from './api/routes/leaderboard.js';
@@ -64,6 +65,7 @@ export async function buildApp(container: AppContainer) {
   await app.register(economyRoutes, { prefix: '/economy', container });
   await app.register(lobbyRoutes, { prefix: '/lobby', container });
   await app.register(leaderboardRoutes, { prefix: '/leaderboard', container });
+  await app.register(adminRoutes, { prefix: '/admin', container });
 
   return app;
 }
