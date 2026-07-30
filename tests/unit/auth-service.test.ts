@@ -26,6 +26,7 @@ function createMocks() {
     create: vi.fn(),
     findByTokenHash: vi.fn(),
     revoke: vi.fn(),
+    revokeIfActive: vi.fn(),
     revokeAllForUser: vi.fn(),
   };
   return { users, players, refreshTokens };
@@ -72,6 +73,7 @@ describe('AuthService', () => {
     });
 
     expect(result.user.username).toBe('ace');
+
     expect(result.tokens.accessToken).toBeTruthy();
     expect(result.tokens.refreshToken).toBeTruthy();
   });

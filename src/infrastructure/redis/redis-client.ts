@@ -71,10 +71,20 @@ export class RedisRateLimiter {
     windowSeconds: number,
   ): Promise<{ allowed: boolean; remaining: number }> {
     const redisKey = `ratelimit:${key}`;
-    const count = await this.redis.incr(redisKey);
-    if (count === 1) {
-      await this.redis.expire(redisKey, windowSeconds);
-    }
+    // Atomic INCR + EXPIRE to avoid orphan keys without TTL.
+    const count = (await this.redis.eval(
+      `
+        local current = redis.call('INCR', KEYS[1])
+        if current == 1 then
+          redis.call('EXPIRE', KEYS[1], ARGV[1])
+        end
+        return current
+      `,
+      1,
+      redisKey,
+      windowSeconds,
+    )) as number;
+
     const remaining = Math.max(0, limit - count);
     return { allowed: count <= limit, remaining };
   }

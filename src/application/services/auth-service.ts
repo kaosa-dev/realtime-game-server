@@ -1,4 +1,4 @@
-import { ConflictError, UnauthorizedError } from '../../domain/errors/app-error.js';
+import { ConflictError, ForbiddenError, UnauthorizedError } from '../../domain/errors/app-error.js';
 import type { PlayerRepository } from '../../domain/repositories/player-repository.js';
 import type { RefreshTokenRepository } from '../../domain/repositories/refresh-token-repository.js';
 import type { UserRepository } from '../../domain/repositories/user-repository.js';
@@ -7,7 +7,7 @@ import {
   hashPassword,
   hashToken,
   signAccessToken,
-  verifyPassword,
+  verifyPasswordWithTimingPad,
   verifyRefreshToken,
 } from '../../infrastructure/auth/token-service.js';
 import { DEFAULT_STARTING_COINS } from '../../shared/constants/game.js';
@@ -44,6 +44,10 @@ export interface AuthResult {
   tokens: AuthTokens;
 }
 
+function normalizeUsername(username: string): string {
+  return username.trim().toLowerCase();
+}
+
 export class AuthService {
   constructor(
     private readonly users: UserRepository,
@@ -52,20 +56,23 @@ export class AuthService {
   ) {}
 
   async register(input: RegisterInput): Promise<AuthResult> {
-    const existingEmail = await this.users.findByEmail(input.email.toLowerCase());
+    const email = input.email.toLowerCase().trim();
+    const username = normalizeUsername(input.username);
+
+    const existingEmail = await this.users.findByEmail(email);
     if (existingEmail) {
       throw new ConflictError('Email already registered');
     }
 
-    const existingUsername = await this.users.findByUsername(input.username);
+    const existingUsername = await this.users.findByUsername(username);
     if (existingUsername) {
       throw new ConflictError('Username already taken');
     }
 
     const passwordHash = await hashPassword(input.password);
     const user = await this.users.create({
-      email: input.email.toLowerCase(),
-      username: input.username,
+      email,
+      username,
       passwordHash,
     });
 
@@ -91,19 +98,15 @@ export class AuthService {
   }
 
   async login(input: LoginInput): Promise<AuthResult> {
-    const user = await this.users.findByEmail(input.email.toLowerCase());
-    if (!user) {
-      throw new UnauthorizedError('Invalid credentials');
-    }
-
-    const valid = await verifyPassword(input.password, user.passwordHash);
-    if (!valid) {
+    const user = await this.users.findByEmail(input.email.toLowerCase().trim());
+    const valid = await verifyPasswordWithTimingPad(input.password, user?.passwordHash ?? null);
+    if (!user || !valid) {
       throw new UnauthorizedError('Invalid credentials');
     }
 
     const player = await this.players.findByUserId(user.id);
     if (!player) {
-      throw new UnauthorizedError('Player profile missing');
+      throw new UnauthorizedError('Invalid credentials');
     }
 
     const tokens = await this.issueTokens(user.id, player.id, player.username);
@@ -130,25 +133,44 @@ export class AuthService {
     }
 
     const stored = await this.refreshTokens.findByTokenHash(hashToken(refreshToken));
-    if (!stored || stored.revokedAt || stored.expiresAt.getTime() < Date.now()) {
+    if (!stored || stored.expiresAt.getTime() < Date.now()) {
       throw new UnauthorizedError('Refresh token revoked or expired');
     }
 
-    await this.refreshTokens.revoke(stored.id);
+    if (stored.userId !== payload.userId) {
+      throw new UnauthorizedError('Invalid refresh token');
+    }
+
+    const revoked = await this.refreshTokens.revokeIfActive(stored.id);
+    if (!revoked) {
+      // Reuse of an already-rotated refresh token → revoke the whole session family.
+      await this.refreshTokens.revokeAllForUser(stored.userId);
+      throw new UnauthorizedError('Refresh token reuse detected');
+    }
 
     const player = await this.players.findByUserId(payload.userId);
     if (!player) {
-      throw new UnauthorizedError('Player profile missing');
+      throw new UnauthorizedError('Invalid refresh token');
     }
 
     return this.issueTokens(payload.userId, player.id, player.username);
   }
 
-  async logout(refreshToken: string): Promise<void> {
+  async logout(userId: string, refreshToken: string): Promise<void> {
     const stored = await this.refreshTokens.findByTokenHash(hashToken(refreshToken));
-    if (stored && !stored.revokedAt) {
+    if (!stored) {
+      return;
+    }
+    if (stored.userId !== userId) {
+      throw new ForbiddenError('Refresh token does not belong to this user');
+    }
+    if (!stored.revokedAt) {
       await this.refreshTokens.revoke(stored.id);
     }
+  }
+
+  async logoutAll(userId: string): Promise<void> {
+    await this.refreshTokens.revokeAllForUser(userId);
   }
 
   private async issueTokens(

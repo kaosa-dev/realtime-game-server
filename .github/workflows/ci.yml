@@ -38,8 +38,8 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/realtime_game_test?schema=public
       REDIS_URL: redis://localhost:6379/15
-      JWT_ACCESS_SECRET: ci-access-secret-change-me-in-production-min-32
-      JWT_REFRESH_SECRET: ci-refresh-secret-change-me-in-production-min-32
+      JWT_ACCESS_SECRET: ci-access-secret-not-a-placeholder-value-min-32
+      JWT_REFRESH_SECRET: ci-refresh-secret-not-a-placeholder-value-min-32
       JWT_ACCESS_EXPIRES_IN: 15m
       JWT_REFRESH_EXPIRES_IN: 7d
       GAME_TICK_RATE: 20
@@ -49,6 +49,10 @@ jobs:
       HEARTBEAT_TIMEOUT_MS: 15000
       WS_RATE_LIMIT_PER_SECOND: 30
       BCRYPT_ROUNDS: 10
+      HTTP_RATE_LIMIT_MAX: 300
+      AUTH_RATE_LIMIT_MAX: 20
+      CORS_ORIGINS: http://localhost:3000
+      TRUST_PROXY: false
 
     steps:
       - name: Checkout

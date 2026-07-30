@@ -3,7 +3,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import type { AppContainer } from './shared/container.js';
-import { env } from './shared/config/env.js';
+import { env, parseCorsOrigins } from './shared/config/env.js';
 import { errorHandler } from './api/middleware/error-handler.js';
 import { authRoutes } from './api/routes/auth.js';
 import { adminRoutes } from './api/routes/admin.js';
@@ -15,6 +15,7 @@ import { playerRoutes } from './api/routes/player.js';
 
 export async function buildApp(container: AppContainer) {
   const app = Fastify({
+    trustProxy: env.TRUST_PROXY,
     logger: {
       level: env.LOG_LEVEL,
       transport:
@@ -30,7 +31,10 @@ export async function buildApp(container: AppContainer) {
   app.setErrorHandler(errorHandler);
 
   await app.register(helmet, { global: true });
-  await app.register(cors, { origin: true, credentials: true });
+  await app.register(cors, {
+    origin: parseCorsOrigins(),
+    credentials: false,
+  });
   await app.register(rateLimit, {
     max: env.HTTP_RATE_LIMIT_MAX,
     timeWindow: env.HTTP_RATE_LIMIT_WINDOW,

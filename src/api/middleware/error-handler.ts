@@ -2,6 +2,15 @@ import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { AppError } from '../../domain/errors/app-error.js';
 
+const SAFE_CLIENT_STATUS_MESSAGES: Record<number, string> = {
+  400: 'Bad request',
+  401: 'Unauthorized',
+  403: 'Forbidden',
+  404: 'Not found',
+  409: 'Conflict',
+  429: 'Rate limit exceeded',
+};
+
 export function errorHandler(
   error: FastifyError | Error,
   _request: FastifyRequest,
@@ -39,7 +48,10 @@ export function errorHandler(
   void reply.status(statusCode).send({
     error: {
       code: statusCode === 500 ? 'INTERNAL_ERROR' : 'REQUEST_ERROR',
-      message: statusCode === 500 ? 'Internal server error' : error.message,
+      message:
+        statusCode === 500
+          ? 'Internal server error'
+          : (SAFE_CLIENT_STATUS_MESSAGES[statusCode] ?? 'Request error'),
     },
   });
 }

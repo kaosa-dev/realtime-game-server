@@ -8,7 +8,7 @@ describe('API schemas', () => {
       username: 'Nova_1',
       password: 'supersecure',
     });
-    expect(parsed.username).toBe('Nova_1');
+    expect(parsed.username).toBe('nova_1');
   });
 
   it('rejects short passwords', () => {

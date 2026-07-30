@@ -17,5 +17,7 @@ export interface RefreshTokenRepository {
   create(input: CreateRefreshTokenInput): Promise<RefreshTokenEntity>;
   findByTokenHash(tokenHash: string): Promise<RefreshTokenEntity | null>;
   revoke(id: string): Promise<void>;
+  /** Atomically revoke an active token. Returns false if already revoked/missing. */
+  revokeIfActive(id: string): Promise<boolean>;
   revokeAllForUser(userId: string): Promise<void>;
 }

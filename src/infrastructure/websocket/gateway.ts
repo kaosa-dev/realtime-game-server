@@ -19,10 +19,19 @@ interface SocketContext {
   reconnectToken?: string;
 }
 
+interface ReconnectEntry {
+  playerId: string;
+  roomId: string;
+  expiresAt: number;
+}
+
+const RECONNECT_TTL_MS = 5 * 60_000;
+
 export class WebSocketGateway {
   private wss: WebSocketServer | null = null;
   private readonly sockets = new Map<WebSocket, SocketContext>();
-  private readonly reconnectTokens = new Map<string, { playerId: string; roomId: string }>();
+  private readonly socketsByPlayer = new Map<string, WebSocket>();
+  private readonly reconnectTokens = new Map<string, ReconnectEntry>();
   private readonly subscribedRooms = new Set<string>();
 
   constructor(
@@ -33,7 +42,11 @@ export class WebSocketGateway {
   ) {}
 
   attach(server: HttpServer): void {
-    this.wss = new WebSocketServer({ server, path: '/ws' });
+    this.wss = new WebSocketServer({
+      server,
+      path: '/ws',
+      maxPayload: 16_384,
+    });
 
     this.wss.on('connection', (socket, request) => {
       void this.handleConnection(socket, request);
@@ -53,10 +66,26 @@ export class WebSocketGateway {
     });
   }
 
+  private clientIp(request: IncomingMessage): string {
+    const forwarded = request.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.length > 0 && env.TRUST_PROXY) {
+      return forwarded.split(',')[0]?.trim() || request.socket.remoteAddress || 'unknown';
+    }
+    return request.socket.remoteAddress || 'unknown';
+  }
+
   private async handleConnection(socket: WebSocket, request: IncomingMessage): Promise<void> {
     try {
+      const ipLimit = await this.rateLimiter.consume(`ws-connect:${this.clientIp(request)}`, 30, 60);
+      if (!ipLimit.allowed) {
+        socket.close(1008, 'connection_rate_limited');
+        return;
+      }
+
       const token = this.extractToken(request);
       const payload = verifyAccessToken(token);
+
+      this.replaceExistingSocket(payload.playerId);
 
       const ctx: SocketContext = {
         userId: payload.userId,
@@ -64,6 +93,7 @@ export class WebSocketGateway {
         username: payload.username,
       };
       this.sockets.set(socket, ctx);
+      this.socketsByPlayer.set(payload.playerId, socket);
       await this.presence.setOnline(payload.playerId);
 
       socket.on('message', (raw) => {
@@ -83,22 +113,44 @@ export class WebSocketGateway {
     }
   }
 
-  private extractToken(request: IncomingMessage): string {
-    const url = new URL(request.url ?? '', 'http://localhost');
-    const queryToken = url.searchParams.get('token');
-    if (queryToken) return queryToken;
+  private replaceExistingSocket(playerId: string): void {
+    const existing = this.socketsByPlayer.get(playerId);
+    if (!existing) return;
+    existing.close(4000, 'replaced_by_new_connection');
+    this.sockets.delete(existing);
+    this.socketsByPlayer.delete(playerId);
+  }
 
+  private extractToken(request: IncomingMessage): string {
     const auth = request.headers.authorization;
     if (auth?.startsWith('Bearer ')) {
       return auth.slice(7);
     }
 
+    // Query token is supported for browser clients but may appear in access logs.
+    const url = new URL(request.url ?? '', 'http://localhost');
+    const queryToken = url.searchParams.get('token');
+    if (queryToken) return queryToken;
+
     throw new UnauthorizedError('Missing token');
+  }
+
+  private purgeExpiredReconnectTokens(now = Date.now()): void {
+    for (const [token, entry] of this.reconnectTokens) {
+      if (entry.expiresAt <= now) {
+        this.reconnectTokens.delete(token);
+      }
+    }
   }
 
   private async onMessage(socket: WebSocket, raw: string): Promise<void> {
     const ctx = this.sockets.get(socket);
     if (!ctx) return;
+
+    if (raw.length > 16_384) {
+      this.send(socket, { type: 'error', code: 'PAYLOAD_TOO_LARGE', message: 'Message too large' });
+      return;
+    }
 
     const limited = await this.rateLimiter.consume(
       `ws:${ctx.playerId}`,
@@ -209,9 +261,17 @@ export class WebSocketGateway {
     roomId: string,
     reconnectToken?: string,
   ): Promise<void> {
+    this.purgeExpiredReconnectTokens();
+
     if (reconnectToken) {
       const cached = this.reconnectTokens.get(reconnectToken);
-      if (!cached || cached.playerId !== ctx.playerId || cached.roomId !== roomId) {
+      this.reconnectTokens.delete(reconnectToken);
+      if (
+        !cached ||
+        cached.expiresAt <= Date.now() ||
+        cached.playerId !== ctx.playerId ||
+        cached.roomId !== roomId
+      ) {
         this.send(socket, {
           type: 'error',
           code: 'INVALID_RECONNECT',
@@ -251,8 +311,16 @@ export class WebSocketGateway {
       });
     }
 
+    if (ctx.reconnectToken) {
+      this.reconnectTokens.delete(ctx.reconnectToken);
+    }
+
     const token = randomUUID();
-    this.reconnectTokens.set(token, { playerId: ctx.playerId, roomId });
+    this.reconnectTokens.set(token, {
+      playerId: ctx.playerId,
+      roomId,
+      expiresAt: Date.now() + RECONNECT_TTL_MS,
+    });
     ctx.roomId = roomId;
     ctx.reconnectToken = token;
 
@@ -272,6 +340,10 @@ export class WebSocketGateway {
     const ctx = this.sockets.get(socket);
     this.sockets.delete(socket);
     if (!ctx) return;
+
+    if (this.socketsByPlayer.get(ctx.playerId) === socket) {
+      this.socketsByPlayer.delete(ctx.playerId);
+    }
 
     if (ctx.roomId) {
       this.sessions.get(ctx.roomId)?.markDisconnected(ctx.playerId);

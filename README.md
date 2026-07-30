@@ -71,6 +71,8 @@ Raw artifacts: [`docs/load-test/results.json`](docs/load-test/results.json) · [
 - Clients submit movement intent rather than absolute position updates.
 - Repository interfaces isolate application services from Prisma-specific persistence code.
 - Item grants and coin credits are admin-only (`x-admin-key`); player JWTs cannot mint economy state.
+- JWT secrets and DB/Redis passwords must be supplied via environment; production rejects placeholder secrets.
+- Auth routes use a stricter rate limit than the global API budget.
 
 ## Tech Stack
 
@@ -299,8 +301,11 @@ curl -s -X POST http://localhost:3000/admin/economy/credit \
 Connect:
 
 ```text
-ws://localhost:3000/ws?token=<ACCESS_TOKEN>
+ws://localhost:3000/ws
+Authorization: Bearer <ACCESS_TOKEN>
 ```
+
+Query-string tokens (`?token=`) are supported for browser clients but can leak via logs/proxies; prefer the Authorization header when possible.
 
 ### Client → Server
 

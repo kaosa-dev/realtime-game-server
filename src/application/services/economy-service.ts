@@ -28,7 +28,10 @@ export class EconomyService {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const player = await tx.player.findUnique({ where: { id: playerId } });
+      const locked = await tx.$queryRaw<Array<{ id: string; coins: number }>>`
+        SELECT id, coins FROM players WHERE id = ${playerId} FOR UPDATE
+      `;
+      const player = locked[0];
       if (!player) {
         throw new NotFoundError('Player');
       }
@@ -76,7 +79,10 @@ export class EconomyService {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      const player = await tx.player.findUnique({ where: { id: playerId } });
+      const locked = await tx.$queryRaw<Array<{ id: string; coins: number }>>`
+        SELECT id, coins FROM players WHERE id = ${playerId} FOR UPDATE
+      `;
+      const player = locked[0];
       if (!player) {
         throw new NotFoundError('Player');
       }
