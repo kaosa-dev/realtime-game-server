@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-07-30T18:54:06.491Z",
+  "baseUrl": "http://localhost:3000",
+  "wsUrl": "ws://localhost:3000",
+  "tool": "custom-ws-load-test",
+  "healthBefore": {
+    "status": "ok",
+    "uptime": 25.645970825,
+    "timestamp": "2026-07-30T18:52:39.097Z"
+  },
+  "healthAfter": {
+    "status": "ok",
+    "uptime": 112.727521153,
+    "timestamp": "2026-07-30T18:54:06.175Z"
+  },
+  "readyAfter": {
+    "status": "ready",
+    "redis": true
+  },
+  "stackHealthyAfterLoad": true,
+  "dockerPs": "NAME           IMAGE                      COMMAND                  SERVICE    CREATED              STATUS                        PORTS\nrgs-api        realtime-game-server-api   \"./docker/entrypoint…\"   api        About a minute ago   Up About a minute (healthy)   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp\nrgs-postgres   postgres:16-alpine         \"docker-entrypoint.s…\"   postgres   13 minutes ago       Up 13 minutes (healthy)       127.0.0.1:5432->5432/tcp\nrgs-redis      redis:7-alpine             \"docker-entrypoint.s…\"   redis      13 minutes ago       Up 13 minutes (healthy)       127.0.0.1:6379->6379/tcp",
+  "totals": {
+    "clientsRequested": 200,
+    "clientsConnected": 200,
+    "clientsJoined": 200,
+    "rooms": 25,
+    "roomSize": 8,
+    "durationSec": 30,
+    "inputHz": 20,
+    "inputsSent": 118600,
+    "inputAcks": 118600,
+    "snapshots": 6288,
+    "deltas": 107304,
+    "errors": 0,
+    "messagesPerSec": 11693.066666666668,
+    "inputAckLatencyMs": {
+      "p50": 14.16,
+      "p95": 34.76,
+      "p99": 56,
+      "avg": 16.38
+    },
+    "pongLatencyMs": {
+      "p50": 50,
+      "p95": 84,
+      "avg": 48.38
+    },
+    "observedTickRate": 21.73,
+    "reconnect": {
+      "attempted": 40,
+      "succeeded": 40,
+      "successRate": 100
+    },
+    "avgConnectMs": 24.8
+  }
+}

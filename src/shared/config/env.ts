@@ -31,6 +31,7 @@ const envSchema = z
     HEARTBEAT_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
     HEARTBEAT_TIMEOUT_MS: z.coerce.number().int().positive().default(15000),
     WS_RATE_LIMIT_PER_SECOND: z.coerce.number().int().positive().default(30),
+    WS_CONNECT_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(60),
     BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
     HTTP_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
     HTTP_RATE_LIMIT_WINDOW: z.string().default('1 minute'),

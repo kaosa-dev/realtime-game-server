@@ -24,7 +24,9 @@
     "docker:logs": "docker compose logs -f api",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "load:test": "node scripts/load-test.mjs",
-    "load:report": "node scripts/generate-load-report.mjs"
+    "load:ws": "node scripts/ws-load-test.mjs",
+    "load:report": "node scripts/generate-load-report.mjs",
+    "load:ws-report": "node scripts/generate-ws-load-report.mjs"
   },
   "engines": {
     "node": ">=20.0.0"

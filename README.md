@@ -37,6 +37,8 @@ This project is **not** a complete game client. It covers authentication, persis
 
 ## Load Test Evidence
 
+### HTTP pressure (autocannon)
+
 The Docker Compose stack (`api` + `postgres` + `redis`) was exercised with **autocannon** to validate process stability under concurrent HTTP pressure. The API stayed healthy with **0 crashes**.
 
 | What we measured | Result |
@@ -46,22 +48,20 @@ The Docker Compose stack (`api` + `postgres` + `redis`) was exercised with **aut
 | `/health` under concurrent load | **100% success** |
 | Authenticated routes under abuse | Redis rate limiter returned **429**, API kept serving |
 
-These results demonstrate infrastructure survival and rate-limit behavior. They are **not** a claim of full game-session capacity. Peak RPS on `/health` is intentionally de-emphasized here because that endpoint is lightweight and not representative of gameplay traffic.
+These results demonstrate infrastructure survival and rate-limit behavior. Peak RPS on `/health` is intentionally de-emphasized because that endpoint is lightweight and not representative of gameplay traffic.
 
-![Load test report hero](docs/load-test/screenshot-report-hero.png)
+![HTTP load test report hero](docs/load-test/screenshot-report-hero.png)
 
 <details>
-<summary>Additional load-test evidence</summary>
+<summary>Additional HTTP load-test evidence</summary>
 
 ![Live stack status after load](docs/load-test/screenshot-live-status.png)
 
 ![GET /health still ok](docs/load-test/screenshot-health.png)
 
-Raw numbers (including `/health` throughput) live in [`docs/load-test/results.json`](docs/load-test/results.json).
+Raw numbers live in [`docs/load-test/results.json`](docs/load-test/results.json).
 
 </details>
-
-Reproduce:
 
 ```bash
 docker compose up --build -d
@@ -70,7 +70,39 @@ npm run load:report
 # open docs/load-test/report.html
 ```
 
-Next evidence target: **WebSocket game-session load testing** (concurrent clients, sustained 20 TPS, input-to-broadcast latency, reconnect success).
+### WebSocket game-session load
+
+A custom harness bootstrapped **25 rooms × 8 players**, connected **200** WebSocket clients, streamed movement intent at **20 Hz** for 30s, and sampled reconnects against the live Docker stack.
+
+| What we measured | Result |
+| --- | --- |
+| Clients joined | **200 / 200** |
+| Observed tick rate | **~21.7 TPS** (target 20) |
+| Input acks | **118,600 / 118,600** (0 drops) |
+| Input-ack latency | **p50 14.2 ms · p95 34.8 ms · p99 56 ms** |
+| Reconnect sample | **40 / 40 (100%)** |
+| Protocol errors | **0** |
+| Stack after load | **healthy** · Redis **ready** |
+
+This exercises the authoritative path (lobby → join → intent → snapshot/delta fan-out → reconnect), not HTTP `/health` throughput.
+
+![WebSocket game-session load report](docs/load-test/screenshot-ws-report-hero.png)
+
+<details>
+<summary>Additional WebSocket load-test evidence</summary>
+
+![Full WS report](docs/load-test/screenshot-ws-report-full.png)
+
+Raw numbers live in [`docs/load-test/ws-results.json`](docs/load-test/ws-results.json).
+
+</details>
+
+```bash
+docker compose up --build -d
+npm run load:ws
+npm run load:ws-report
+# open docs/load-test/ws-report.html
+```
 
 ## Design Decisions
 

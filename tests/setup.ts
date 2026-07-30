@@ -15,6 +15,7 @@ process.env.MAX_MOVE_SPEED = process.env.MAX_MOVE_SPEED ?? '12';
 process.env.HEARTBEAT_INTERVAL_MS = process.env.HEARTBEAT_INTERVAL_MS ?? '5000';
 process.env.HEARTBEAT_TIMEOUT_MS = process.env.HEARTBEAT_TIMEOUT_MS ?? '15000';
 process.env.WS_RATE_LIMIT_PER_SECOND = process.env.WS_RATE_LIMIT_PER_SECOND ?? '30';
+process.env.WS_CONNECT_RATE_LIMIT_PER_MINUTE = process.env.WS_CONNECT_RATE_LIMIT_PER_MINUTE ?? '2000';
 process.env.BCRYPT_ROUNDS = process.env.BCRYPT_ROUNDS ?? '10';
 process.env.HTTP_RATE_LIMIT_MAX = process.env.HTTP_RATE_LIMIT_MAX ?? '300';
 process.env.AUTH_RATE_LIMIT_MAX = process.env.AUTH_RATE_LIMIT_MAX ?? '20';

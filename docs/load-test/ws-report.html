@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebSocket Game-Session Load Test</title>
+  <style>
+    :root {
+      --bg: #071018;
+      --panel: #101926;
+      --line: #243246;
+      --text: #e8eefc;
+      --muted: #9bb0d0;
+      --accent: #5eead4;
+      --ok: #4ade80;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 0% 0%, #12324a 0%, transparent 55%),
+        radial-gradient(800px 400px at 100% 0%, #1a3a2a 0%, transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 36px 22px 64px; }
+    .hero, .card, .note {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(18,28,42,.96), rgba(10,16,26,.96));
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 14px;
+    }
+    .eyebrow { color: var(--accent); letter-spacing: .12em; text-transform: uppercase; font-size: 12px; font-weight: 700; margin: 0 0 8px; }
+    h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: -0.03em; }
+    .sub { color: var(--muted); margin: 0; line-height: 1.5; }
+    .status {
+      display: inline-flex; gap: 8px; align-items: center; margin-top: 14px;
+      padding: 8px 12px; border-radius: 999px; color: var(--ok);
+      border: 1px solid #24553f; background: rgba(34,100,70,.22); font-weight: 600; font-size: 13px;
+    }
+    .status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+    .kpi { background: #0d1522; border: 1px solid #1d2940; border-radius: 12px; padding: 12px 14px; }
+    .kpi span { display:block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    .kpi strong { font-size: 22px; }
+    h2 { margin: 22px 0 10px; font-size: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .grid div { background: #0d1522; border: 1px solid #1d2940; border-radius: 12px; padding: 12px; }
+    .label { display:block; color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+    pre { white-space: pre-wrap; color: #d7e4ff; font-size: 12px; margin: 8px 0 0; }
+    @media (max-width: 900px) { .kpis, .grid { grid-template-columns: repeat(2, 1fr); } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <p class="eyebrow">WebSocket Game-Session Load Test</p>
+      <h1>Concurrent clients sustained authoritative sessions</h1>
+      <p class="sub">
+        Custom WS harness against live Docker stack. Generated 2026-07-30T18:54:06.491Z.
+        Clients joined rooms, streamed movement intent at 20 Hz, and sampled reconnects.
+      </p>
+      <div class="status"><i></i> Stack healthy after load · ok · redis true</div>
+      <div class="kpis">
+        <div class="kpi"><span>Concurrent clients joined</span><strong>200</strong></div>
+        <div class="kpi"><span>Rooms</span><strong>25</strong></div>
+        <div class="kpi"><span>Observed tick rate</span><strong>21.73 TPS</strong></div>
+        <div class="kpi"><span>Reconnect success</span><strong>100%</strong></div>
+      </div>
+    </section>
+
+    <h2>Session metrics</h2>
+    <div class="card">
+      <div class="grid">
+        <div><span class="label">Inputs sent</span><strong>118,600</strong></div>
+        <div><span class="label">Input acks</span><strong>118,600</strong></div>
+        <div><span class="label">Messages / sec</span><strong>11,693.07</strong></div>
+        <div><span class="label">Snapshots</span><strong>6,288</strong></div>
+        <div><span class="label">Deltas</span><strong>107,304</strong></div>
+        <div><span class="label">Errors</span><strong>0</strong></div>
+        <div><span class="label">Input-ack p50</span><strong>14.16 ms</strong></div>
+        <div><span class="label">Input-ack p95</span><strong>34.76 ms</strong></div>
+        <div><span class="label">Input-ack p99</span><strong>56 ms</strong></div>
+        <div><span class="label">Ping/pong p95</span><strong>84 ms</strong></div>
+        <div><span class="label">Avg connect</span><strong>24.8 ms</strong></div>
+        <div><span class="label">Reconnects</span><strong>40 / 40</strong></div>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong style="color:var(--text)">Interpretation</strong><br/>
+      This test exercises the authoritative game path: lobby bootstrap → WebSocket join → movement intent →
+      snapshot/delta fan-out → reconnect. Unlike HTTP <code>/health</code> storms, these numbers reflect session behavior.
+    </div>
+
+    <div class="note">
+      <strong style="color:var(--text)">docker compose ps after load</strong>
+      <pre>NAME           IMAGE                      COMMAND                  SERVICE    CREATED              STATUS                        PORTS
+rgs-api        realtime-game-server-api   "./docker/entrypoint…"   api        About a minute ago   Up About a minute (healthy)   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+rgs-postgres   postgres:16-alpine         "docker-entrypoint.s…"   postgres   13 minutes ago       Up 13 minutes (healthy)       127.0.0.1:5432->5432/tcp
+rgs-redis      redis:7-alpine             "docker-entrypoint.s…"   redis      13 minutes ago       Up 13 minutes (healthy)       127.0.0.1:6379->6379/tcp</pre>
+    </div>
+  </div>
+</body>
+</html>

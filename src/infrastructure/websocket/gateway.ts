@@ -75,9 +75,22 @@ export class WebSocketGateway {
   }
 
   private async handleConnection(socket: WebSocket, request: IncomingMessage): Promise<void> {
+    // Buffer frames that arrive before auth/setup finishes (clients often send
+    // join_session immediately on `open`, before our message handler is attached).
+    const earlyMessages: string[] = [];
+    const bufferEarly = (raw: WebSocket.RawData): void => {
+      earlyMessages.push(raw.toString());
+    };
+    socket.on('message', bufferEarly);
+
     try {
-      const ipLimit = await this.rateLimiter.consume(`ws-connect:${this.clientIp(request)}`, 30, 60);
+      const ipLimit = await this.rateLimiter.consume(
+        `ws-connect:${this.clientIp(request)}`,
+        env.WS_CONNECT_RATE_LIMIT_PER_MINUTE,
+        60,
+      );
       if (!ipLimit.allowed) {
+        socket.off('message', bufferEarly);
         socket.close(1008, 'connection_rate_limited');
         return;
       }
@@ -96,6 +109,7 @@ export class WebSocketGateway {
       this.socketsByPlayer.set(payload.playerId, socket);
       await this.presence.setOnline(payload.playerId);
 
+      socket.off('message', bufferEarly);
       socket.on('message', (raw) => {
         void this.onMessage(socket, raw.toString());
       });
@@ -103,7 +117,12 @@ export class WebSocketGateway {
       socket.on('close', () => {
         void this.onClose(socket);
       });
+
+      for (const raw of earlyMessages) {
+        await this.onMessage(socket, raw);
+      }
     } catch {
+      socket.off('message', bufferEarly);
       this.send(socket, {
         type: 'error',
         code: 'UNAUTHORIZED',
