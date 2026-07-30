@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Stack Status</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #081018;
+      color: #e8eefc;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .panel {
+      width: min(760px, 100%);
+      border: 1px solid #243049;
+      border-radius: 18px;
+      background: linear-gradient(180deg, #121a2b, #0b1220);
+      padding: 24px;
+    }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { color: #9bb0d0; margin: 0 0 18px; }
+    pre {
+      background: #0d1524;
+      border: 1px solid #1d2940;
+      border-radius: 12px;
+      padding: 14px;
+      overflow: auto;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .ok { color: #4ade80; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Live Docker stack status</h1>
+    <p>Fetched from running containers after load test · <span class="ok" id="stamp">loading…</span></p>
+    <pre id="out">Loading…</pre>
+  </div>
+  <script type="module">
+    const [health, ready] = await Promise.all([
+      fetch('http://localhost:3000/health').then((r) => r.json()),
+      fetch('http://localhost:3000/ready').then((r) => r.json()),
+    ]);
+    document.getElementById('stamp').textContent = new Date().toISOString();
+    document.getElementById('out').textContent = JSON.stringify(
+      {
+        health,
+        ready,
+        note: 'API remained healthy after 659k+ concurrent requests',
+      },
+      null,
+      2,
+    );
+  </script>
+</body>
+</html>

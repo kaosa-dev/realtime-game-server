@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  username     String         @unique
+  passwordHash String         @map("password_hash")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  player       Player?
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Player {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  username  String   @unique
+  experience Int     @default(0)
+  coins     Int      @default(100)
+  level     Int      @default(1)
+  equipment Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inventory     Inventory?
+  coinTransactions CoinTransaction[]
+  roomMembers   RoomMember[]
+  sessions      Session[]
+  leaderboard   Leaderboard?
+
+  @@index([experience(sort: Desc)])
+  @@index([coins(sort: Desc)])
+  @@map("players")
+}
+
+model Inventory {
+  id        String          @id @default(uuid())
+  playerId  String          @unique @map("player_id")
+  capacity  Int             @default(40)
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  player Player          @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  items  InventoryItem[]
+
+  @@map("inventories")
+}
+
+model InventoryItem {
+  id          String   @id @default(uuid())
+  inventoryId String   @map("inventory_id")
+  itemKey     String   @map("item_key")
+  name        String
+  quantity    Int      @default(1)
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@unique([inventoryId, itemKey])
+  @@index([inventoryId])
+  @@map("inventory_items")
+}
+
+model Room {
+  id          String     @id @default(uuid())
+  code        String     @unique
+  name        String
+  hostId      String     @map("host_id")
+  maxPlayers  Int        @default(8) @map("max_players")
+  status      RoomStatus @default(WAITING)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  members  RoomMember[]
+  sessions Session[]
+
+  @@index([status])
+  @@map("rooms")
+}
+
+model RoomMember {
+  id       String   @id @default(uuid())
+  roomId   String   @map("room_id")
+  playerId String   @map("player_id")
+  ready    Boolean  @default(false)
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, playerId])
+  @@index([playerId])
+  @@map("room_members")
+}
+
+model Session {
+  id        String        @id @default(uuid())
+  roomId    String        @map("room_id")
+  playerId  String        @map("player_id")
+  status    SessionStatus @default(ACTIVE)
+  startedAt DateTime      @default(now()) @map("started_at")
+  endedAt   DateTime?     @map("ended_at")
+  metadata  Json          @default("{}")
+
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, status])
+  @@index([playerId])
+  @@map("sessions")
+}
+
+model Leaderboard {
+  id         String   @id @default(uuid())
+  playerId   String   @unique @map("player_id")
+  username   String
+  experience Int      @default(0)
+  level      Int      @default(1)
+  wins       Int      @default(0)
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([experience(sort: Desc)])
+  @@map("leaderboard")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model CoinTransaction {
+  id          String                @id @default(uuid())
+  playerId    String                @map("player_id")
+  amount      Int
+  balanceAfter Int                  @map("balance_after")
+  type        CoinTransactionType
+  reason      String
+  createdAt   DateTime              @default(now()) @map("created_at")
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId, createdAt(sort: Desc)])
+  @@map("coin_transactions")
+}
+
+enum RoomStatus {
+  WAITING
+  IN_PROGRESS
+  CLOSED
+}
+
+enum SessionStatus {
+  ACTIVE
+  DISCONNECTED
+  ENDED
+}
+
+enum CoinTransactionType {
+  CREDIT
+  DEBIT
+}

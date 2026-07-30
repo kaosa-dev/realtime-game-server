@@ -1,0 +1,195 @@
+{
+  "generatedAt": "2026-07-30T17:52:56.368Z",
+  "baseUrl": "http://localhost:3000",
+  "tool": "autocannon",
+  "stackHealthyAfterLoad": true,
+  "healthAfter": {
+    "status": "ok",
+    "uptime": 98.789851343,
+    "timestamp": "2026-07-30T17:52:56.364Z"
+  },
+  "readyAfter": {
+    "status": "ready",
+    "redis": true
+  },
+  "dockerPs": "NAME           IMAGE                      COMMAND                  SERVICE    CREATED              STATUS                        PORTS\nrgs-api        realtime-game-server-api   \"./docker/entrypoint…\"   api        About a minute ago   Up About a minute (healthy)   0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp\nrgs-postgres   postgres:16-alpine         \"docker-entrypoint.s…\"   postgres   8 minutes ago        Up 8 minutes (healthy)        0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp\nrgs-redis      redis:7-alpine             \"docker-entrypoint.s…\"   redis      8 minutes ago        Up 8 minutes (healthy)        0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp",
+  "scenarios": [
+    {
+      "title": "GET /health · 150 connections · 25s",
+      "url": "http://localhost:3000/health",
+      "durationSec": 25.08,
+      "connections": 150,
+      "pipelining": 10,
+      "requests": {
+        "average": 12835.24,
+        "mean": 12835.24,
+        "stddev": 3824.6,
+        "min": 2537,
+        "max": 17101,
+        "total": 320887,
+        "sent": 322387
+      },
+      "latencyMs": {
+        "average": 116.38,
+        "mean": 116.38,
+        "stddev": 293.45,
+        "min": 3,
+        "max": 8903,
+        "p50": 91,
+        "p90": 139,
+        "p99": 252
+      },
+      "throughputBytes": {
+        "average": 12371435.52,
+        "total": 309299412
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "non2xx": 0,
+      "twoXx": 320887,
+      "successRate": 100,
+      "statusCodeStats": {
+        "200": {
+          "count": 320887
+        }
+      }
+    },
+    {
+      "title": "GET /players/me · 100 connections · 20s",
+      "url": "http://localhost:3000/players/me",
+      "durationSec": 20.1,
+      "connections": 100,
+      "pipelining": 5,
+      "requests": {
+        "average": 6589.15,
+        "mean": 6589.15,
+        "stddev": 2964.81,
+        "min": 575,
+        "max": 9553,
+        "total": 131778,
+        "sent": 132278
+      },
+      "latencyMs": {
+        "average": 75.57,
+        "mean": 75.57,
+        "stddev": 179.97,
+        "min": 3,
+        "max": 4897,
+        "p50": 60,
+        "p90": 94,
+        "p99": 269
+      },
+      "throughputBytes": {
+        "average": 7160115.2,
+        "total": 143204700
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "non2xx": 126786,
+      "twoXx": 4992,
+      "successRate": 3.79,
+      "statusCodeStats": {
+        "200": {
+          "count": 4992
+        },
+        "429": {
+          "count": 126786
+        }
+      }
+    },
+    {
+      "title": "GET /lobby/rooms · 80 connections · 20s",
+      "url": "http://localhost:3000/lobby/rooms",
+      "durationSec": 20.09,
+      "connections": 80,
+      "pipelining": 5,
+      "requests": {
+        "average": 6148.85,
+        "mean": 6148.85,
+        "stddev": 2935.34,
+        "min": 941,
+        "max": 9564,
+        "total": 122962,
+        "sent": 123362
+      },
+      "latencyMs": {
+        "average": 64.74,
+        "mean": 64.74,
+        "stddev": 68.4,
+        "min": 1,
+        "max": 636,
+        "p50": 49,
+        "p90": 91,
+        "p99": 407
+      },
+      "throughputBytes": {
+        "average": 6610560,
+        "total": 132198896
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "non2xx": 117962,
+      "twoXx": 5000,
+      "successRate": 4.07,
+      "statusCodeStats": {
+        "200": {
+          "count": 5000
+        },
+        "429": {
+          "count": 117962
+        }
+      }
+    },
+    {
+      "title": "POST /auth/login · 40 connections · 15s",
+      "url": "http://localhost:3000/auth/login",
+      "durationSec": 15.01,
+      "connections": 40,
+      "pipelining": 1,
+      "requests": {
+        "average": 5571.34,
+        "mean": 5571.34,
+        "stddev": 408.95,
+        "min": 4628,
+        "max": 6050,
+        "total": 83559,
+        "sent": 83599
+      },
+      "latencyMs": {
+        "average": 6.68,
+        "mean": 6.68,
+        "stddev": 3.4,
+        "min": 1,
+        "max": 112,
+        "p50": 6,
+        "p90": 10,
+        "p99": 18
+      },
+      "throughputBytes": {
+        "average": 6021529.6,
+        "total": 90327279
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "non2xx": 83559,
+      "twoXx": 0,
+      "successRate": 0,
+      "statusCodeStats": {
+        "429": {
+          "count": 83559
+        }
+      }
+    }
+  ],
+  "totals": {
+    "requests": 659186,
+    "twoXx": 330879,
+    "errors": 0,
+    "timeouts": 0,
+    "non2xx": 328307,
+    "peakReqPerSec": 17101,
+    "bestP99Ms": 18,
+    "overallSuccessRate": 50.2
+  },
+  "seededUsers": 8
+}
