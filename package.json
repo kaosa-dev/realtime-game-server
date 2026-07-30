@@ -1,7 +1,7 @@
 {
   "name": "realtime-game-server",
   "version": "1.0.0",
-  "description": "Production-quality server-authoritative multiplayer game backend with Fastify, WebSocket, PostgreSQL, Redis, and Prisma",
+  "description": "Server-authoritative multiplayer backend built with TypeScript, Fastify, WebSockets, PostgreSQL and Redis",
   "type": "module",
   "main": "dist/server.js",
   "scripts": {

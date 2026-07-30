@@ -1,4 +1,4 @@
-# Realtime Game Server
+# Authoritative Multiplayer Game Server
 
 ![CI](https://github.com/kaosa-dev/realtime-game-server/actions/workflows/ci.yml/badge.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
@@ -8,6 +8,15 @@
 A reference implementation of a **server-authoritative multiplayer backend**, designed to demonstrate production-oriented backend architecture and realtime networking patterns used in competitive online games.
 
 This project is **not** a complete game client. It covers authentication, persistent player progression, lobbies, authoritative realtime sessions, inventory/economy boundaries, Redis-backed presence/rate limiting, and automated CI.
+
+## Highlights
+
+- Server-authoritative movement at 20 TPS
+- Snapshot and delta synchronization
+- PostgreSQL-backed inventory and economy
+- Redis presence and rate limiting
+- JWT authentication with refresh-token rotation
+- Dockerized local environment and CI
 
 ## Features
 
@@ -28,18 +37,16 @@ This project is **not** a complete game client. It covers authentication, persis
 
 ## Load Test Evidence
 
-Live Docker Compose stack (`api` + `postgres` + `redis`) was storm-tested with **autocannon**. The process stayed healthy with **0 crashes**.
+The Docker Compose stack (`api` + `postgres` + `redis`) was exercised with **autocannon** to validate process stability under concurrent HTTP pressure. The API stayed healthy with **0 crashes**.
 
-| Metric | Result |
+| What we measured | Result |
 | --- | --- |
-| Total requests | **659,186** |
-| Peak RPS | **17,101** |
-| `/health` success | **100%** (320,887 / 320,887) |
-| Avg `/health` RPS | **~12,835** |
-| After-load health | **ok** · Redis **ready** |
-| Process errors | **0** |
+| Stack after load | **healthy** · Redis **ready** |
+| Process errors / crashes | **0** |
+| `/health` under concurrent load | **100% success** |
+| Authenticated routes under abuse | Redis rate limiter returned **429**, API kept serving |
 
-The highest throughput figures were recorded on the lightweight `/health` endpoint. Authenticated API routes were tested separately under Redis-backed rate limiting. These results demonstrate process stability and infrastructure behavior, not full game-session capacity.
+These results demonstrate infrastructure survival and rate-limit behavior. They are **not** a claim of full game-session capacity. Peak RPS on `/health` is intentionally de-emphasized here because that endpoint is lightweight and not representative of gameplay traffic.
 
 ![Load test report hero](docs/load-test/screenshot-report-hero.png)
 
@@ -49,6 +56,8 @@ The highest throughput figures were recorded on the lightweight `/health` endpoi
 ![Live stack status after load](docs/load-test/screenshot-live-status.png)
 
 ![GET /health still ok](docs/load-test/screenshot-health.png)
+
+Raw numbers (including `/health` throughput) live in [`docs/load-test/results.json`](docs/load-test/results.json).
 
 </details>
 
@@ -61,7 +70,7 @@ npm run load:report
 # open docs/load-test/report.html
 ```
 
-Raw artifacts: [`docs/load-test/results.json`](docs/load-test/results.json) · [`docs/load-test/report.html`](docs/load-test/report.html)
+Next evidence target: **WebSocket game-session load testing** (concurrent clients, sustained 20 TPS, input-to-broadcast latency, reconnect success).
 
 ## Design Decisions
 
@@ -425,6 +434,7 @@ See `.env.example` for all knobs:
 
 ## Future Improvements
 
+- WebSocket game-session load tests (concurrent clients, sustained 20 TPS, p95 input-to-broadcast latency, reconnect success)
 - Horizontal scaling with Redis pub/sub fan-out across game nodes
 - Interest management / AOI culling for large maps
 - Binary protocols (MessagePack / FlatBuffers) for bandwidth
